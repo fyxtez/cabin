@@ -1,6 +1,6 @@
 [package]
 name = "cabin"
-version = "0.1.0"
+version = "1.0.2"
 description = "Private multi-server systemd service control room"
 authors = ["Fyxtez"]
 edition = "2021"

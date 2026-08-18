@@ -120,6 +120,14 @@ button:disabled { cursor: not-allowed; opacity: .4; }
 .live-toggle:has(input:checked) .live-indicator { background: #4ade80; box-shadow: 0 0 10px rgba(74, 222, 128, .8); animation: pulse 1.4s ease-in-out infinite; }
 @keyframes pulse { 50% { opacity: .45; } }
 
+/* Feature: the visible Live deadline and reset action make automatic log shutdown predictable and renewable. */
+.live-timer { display: flex; align-items: center; height: 36px; overflow: hidden; border: 1px solid #3a3a36; border-radius: 9px; background: #171717; }
+.live-timer > span { min-width: 52px; padding: 0 10px; color: #a0a09a; font: 11px/1 "SFMono-Regular", Consolas, monospace; text-align: center; }
+.live-timer.active > span { color: #4ade80; }
+.live-timer.expired > span { color: #fca5a5; }
+.live-timer button { height: 100%; border: 0; border-left: 1px solid #30302d; border-radius: 0; padding: 0 10px; color: #f5a623; background: transparent; font-size: 11px; }
+.live-timer button:hover { background: #24200f; }
+
 /* Feature: browser-style find controls show position, navigate matches, and use Cabin's accent palette. */
 .log-search { display: flex; align-items: center; height: 36px; overflow: hidden; border: 1px solid #3a3a36; border-radius: 9px; background: #171717; }
 .log-search:focus-within { border-color: #f5a623; box-shadow: 0 0 0 1px rgba(245, 166, 35, .16); }
@@ -178,6 +186,8 @@ button:disabled { cursor: not-allowed; opacity: .4; }
   .modal-backdrop { padding: 0; }
   .logs-modal { min-height: 100dvh; border: 0; border-radius: 0; }
   .log-tools { flex-wrap: wrap; }
+  /* Responsive fix: keep the new timer readable while allowing search to retain a full row on narrow screens. */
+  .live-timer { margin-left: auto; }
   .log-search { order: 2; flex-basis: 100%; }
   .process-panel { max-height: 48vh; padding: 16px; }
   .process-actions { grid-template-columns: 1fr; }

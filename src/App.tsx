@@ -31,6 +31,7 @@ type Notice = { kind: "success" | "error"; message: string } | null;
 
 const STATUS_REFRESH_SECONDS = 60;
 const LIVE_LOG_REFRESH_MS = 1_500;
+const LIVE_LOG_TIMEOUT_SECONDS = 5 * 60;
 
 function getServiceGroup(service: ServiceStatus) {
   // Feature: normalize common systemd combinations into the requested Running and Dead groups.
@@ -70,11 +71,13 @@ function App() {
   const [logs, setLogs] = useState("");
   const [logsLoading, setLogsLoading] = useState(false);
   const [liveLogs, setLiveLogs] = useState(false);
+  const [liveLogSecondsLeft, setLiveLogSecondsLeft] = useState(LIVE_LOG_TIMEOUT_SECONDS);
   const [searchQuery, setSearchQuery] = useState("");
   const [currentMatch, setCurrentMatch] = useState(0);
   const [notice, setNotice] = useState<Notice>(null);
   const hasLoaded = useRef(false);
   const nextRefreshAt = useRef(Date.now() + STATUS_REFRESH_SECONDS * 1_000);
+  const liveLogsExpireAt = useRef(Date.now() + LIVE_LOG_TIMEOUT_SECONDS * 1_000);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const logsContainerRef = useRef<HTMLPreElement>(null);
   const matchRefs = useRef(new Map<number, HTMLElement>());
@@ -152,10 +155,23 @@ function App() {
     setLogs("");
     setSearchQuery("");
     setCurrentMatch(0);
-    // Feature: every newly opened log workspace starts in Live mode by default.
+    // Feature: every newly opened log workspace starts a fresh, bounded five-minute Live session.
+    liveLogsExpireAt.current = Date.now() + LIVE_LOG_TIMEOUT_SECONDS * 1_000;
+    setLiveLogSecondsLeft(LIVE_LOG_TIMEOUT_SECONDS);
     setLiveLogs(true);
     void refreshLogs(selected);
   }, [selected, refreshLogs]);
+
+  useEffect(() => {
+    if (!selected || !liveLogs) return;
+    // Safety feature: live polling stops itself after five minutes so an unattended modal cannot keep issuing SSH log requests.
+    const timer = window.setInterval(() => {
+      const remaining = Math.max(0, Math.ceil((liveLogsExpireAt.current - Date.now()) / 1_000));
+      setLiveLogSecondsLeft(remaining);
+      if (remaining === 0) setLiveLogs(false);
+    }, 1_000);
+    return () => window.clearInterval(timer);
+  }, [selected, liveLogs]);
 
   useEffect(() => {
     if (!selected || !liveLogs) return;
@@ -278,6 +294,22 @@ function App() {
     setSelected(null);
   }
 
+  function setLiveLogsEnabled(enabled: boolean) {
+    // Feature: manually enabling Live always grants a complete five-minute session instead of reusing an expired deadline.
+    if (enabled) {
+      liveLogsExpireAt.current = Date.now() + LIVE_LOG_TIMEOUT_SECONDS * 1_000;
+      setLiveLogSecondsLeft(LIVE_LOG_TIMEOUT_SECONDS);
+    }
+    setLiveLogs(enabled);
+  }
+
+  function refreshLiveLogTimer() {
+    // Feature: the timer control renews Live mode to exactly five minutes, including after automatic shutdown.
+    liveLogsExpireAt.current = Date.now() + LIVE_LOG_TIMEOUT_SECONDS * 1_000;
+    setLiveLogSecondsLeft(LIVE_LOG_TIMEOUT_SECONDS);
+    setLiveLogs(true);
+  }
+
   function selectServer(serverId: string) {
     if (serverId === activeServerId) return;
     // Feature: switching servers clears stale process/log state before the next isolated SSH refresh.
@@ -292,6 +324,8 @@ function App() {
   const activeCount = services.filter((service) => service.activeState === "active").length;
   const failedCount = services.filter((service) => service.activeState === "failed").length;
   const countdown = `0:${secondsToRefresh.toString().padStart(2, "0")}`;
+  // Feature: display the Live deadline as a stable mm:ss countdown for quick scanning.
+  const liveLogCountdown = `${Math.floor(liveLogSecondsLeft / 60)}:${(liveLogSecondsLeft % 60).toString().padStart(2, "0")}`;
   const serviceGroups = useMemo(() => {
     const groups = new Map<string, ServiceStatus[]>();
     services.forEach((service) => {
@@ -434,10 +468,14 @@ function App() {
               <div className="logs-title"><p>journalctl · latest 500 lines</p><h2 id="logs-title">{selectedService.name}</h2></div>
               <div className="log-tools">
                 <label className="live-toggle">
-                  <input type="checkbox" checked={liveLogs} onChange={(event) => setLiveLogs(event.currentTarget.checked)} />
+                  <input type="checkbox" checked={liveLogs} onChange={(event) => setLiveLogsEnabled(event.currentTarget.checked)} />
                   <span className="live-indicator" />
                   Live
                 </label>
+                <div className={`live-timer ${liveLogs ? "active" : "expired"}`} aria-live="polite">
+                  <span>{liveLogCountdown}</span>
+                  <button type="button" onClick={refreshLiveLogTimer}>Reset 5:00</button>
+                </div>
                 <div className="log-search" role="search">
                   <input
                     ref={searchInputRef}

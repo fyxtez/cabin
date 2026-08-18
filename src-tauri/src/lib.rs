@@ -21,6 +21,10 @@ const RUST_SERVICES: &[ServiceConfig] = &[
         name: "exchange-positions",
         unit: "exchange-positions.service",
     },
+        ServiceConfig {
+        name: "weight-tracker-backend",
+        unit: "weight-tracker-backend.service",
+    },
     ServiceConfig {
         name: "lc_insiders",
         unit: "lc_insiders.service",
