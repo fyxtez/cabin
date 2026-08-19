@@ -1,0 +1,3 @@
+.notice { display:flex; align-items:center; justify-content:space-between; gap:20px; margin-bottom:20px; padding:12px 14px; border:1px solid; border-radius:10px; font-size:14px; }
+.notice.error { border-color:#6c3030; color:#fecaca; background:#231111; } .notice.success { border-color:#27643d; color:#86efac; background:#0e2115; }
+.notice button { border:0; padding:0 4px; color:inherit; background:transparent; font-size:20px; }

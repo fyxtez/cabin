@@ -1,0 +1,22 @@
+.topbar { display: flex; align-items: flex-end; justify-content: space-between; gap: 30px; margin-bottom: 24px; }
+.server-navigation { min-width: 0; }
+.server-switcher { display: flex; gap: 10px; }
+.server-tab { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 10px; min-width: 210px; padding: 10px 12px; border: 1px solid #292926; border-radius: 10px; text-align: left; }
+.server-tab.active { border-color: #6f4a12; background: #1a1710; }
+.server-tab-dot { width: 7px; height: 7px; border-radius: 50%; background: #6f6f6a; }
+.server-tab.active .server-tab-dot { background: #f5a623; box-shadow: 0 0 10px rgba(245,166,35,.5); }
+.server-tab-copy { min-width: 0; }
+.server-tab-copy strong, .server-tab-copy small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.server-tab-copy strong { font-size: 13px; }
+.server-tab-copy small { margin-top: 3px; color: #6f6f6a; font: 10px/1.2 "SFMono-Regular", Consolas, monospace; }
+.server-service-count { color: #a0a09a; font: 11px/1 "SFMono-Regular", Consolas, monospace; }
+.refresh-group { display: flex; align-items: center; gap: 14px; }
+.refresh-group > span { color: #6f6f6a; font: 12px/1 "SFMono-Regular", Consolas, monospace; white-space: nowrap; }
+.refresh-button { display: flex; align-items: center; gap: 9px; padding: 10px 14px; border-color: #6f4a12; }
+.refresh-button span { color: #f5a623; font-size: 20px; line-height: 16px; }
+.ssh-settings-button { padding: 10px 12px; font-size: 12px; }
+.spin { display: inline-block; animation: topbar-spin .8s linear infinite; }
+@keyframes topbar-spin { to { transform: rotate(360deg); } }
+@media (max-width: 900px) { .topbar { align-items: stretch; flex-direction: column; } .server-tab { flex: 1; } .refresh-group { justify-content: space-between; } }
+@media (max-width: 700px) { .topbar { gap: 18px; margin-bottom: 20px; } .server-switcher { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); } .server-tab { width: 100%; min-width: 0; } .refresh-group { display: grid; grid-template-columns: minmax(0,1fr) auto auto; gap: 10px; } }
+@media (max-width: 600px) { .server-switcher { grid-template-columns: 1fr; } .refresh-group { grid-template-columns: 1fr 1fr; } .refresh-group > span { grid-column: 1/-1; } .refresh-button,.ssh-settings-button { width:100%; justify-content:center; } }

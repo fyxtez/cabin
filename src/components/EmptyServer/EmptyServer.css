@@ -1,0 +1,2 @@
+.empty-server { display:flex; min-height:46vh; align-items:center; justify-content:center; flex-direction:column; padding:40px 20px; border:1px dashed #353531; border-radius:14px; background:rgba(16,16,16,.55); text-align:center; }
+.empty-server .eyebrow{margin-bottom:10px}.empty-server h2{margin:0;color:#f3f3f1;font-size:22px}.empty-server>p:not(.eyebrow){max-width:470px;margin:10px 0 18px;color:#a0a09a;font-size:13px;line-height:1.6}.empty-server code{padding:7px 10px;border:1px solid #292926;border-radius:7px;color:#6f6f6a;background:#0a0a0a;font-size:11px}

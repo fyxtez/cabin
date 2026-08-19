@@ -1,0 +1,7 @@
+.summary { display:flex; width:fit-content; overflow:hidden; margin-bottom:24px; border:1px solid #292926; border-radius:12px; background:#101010; }
+.summary div { display:flex; align-items:baseline; gap:8px; min-width:120px; padding:14px 18px; border-right:1px solid #292926; }
+.summary div:last-child { border-right:0; } .summary strong { color:#f5a623; font-size:22px; } .summary span { color:#a0a09a; font-size:13px; }
+.green { color:#4ade80 !important; } .red { color:#f87171 !important; }
+@media (max-width:700px){ .summary{width:100%;}.summary div{flex:1;min-width:0;} }
+@media (max-width:600px){ .summary{width:100%;}.summary div{flex:1;min-width:0;padding-inline:12px;} }
+@media (max-width:420px){ .summary div{gap:5px;padding:11px 8px}.summary strong{font-size:19px}.summary span{font-size:11px} }
