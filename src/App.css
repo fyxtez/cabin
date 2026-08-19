@@ -10,7 +10,7 @@
 
 * { box-sizing: border-box; }
 body { margin: 0; min-width: 320px; min-height: 100vh; background: linear-gradient(145deg, #171717 0%, #080808 48%, #050505 100%); }
-button, input { font: inherit; }
+button, input, textarea { font: inherit; }
 
 .app-shell { width: 100%; min-height: 100vh; padding: clamp(28px, 3vw, 52px); }
 .topbar { display: flex; align-items: flex-end; justify-content: space-between; gap: 30px; margin-bottom: 24px; }
@@ -160,6 +160,20 @@ button:disabled { cursor: not-allowed; opacity: .4; }
 .process-actions button { width: 100%; padding: 10px 12px; font-size: 12px; }
 .process-note { margin: 12px 0 0; color: #6f6f6a; font-size: 10px; line-height: 1.5; text-align: center; }
 
+/* Mobile feature: SSH credentials can be configured inside Cabin because Android cannot read desktop ~/.ssh files. */
+.ssh-backdrop { z-index: 20; }
+.ssh-modal { width: min(560px, 100%); max-height: 100%; overflow: auto; padding: 24px; border: 1px solid #4b3820; border-radius: 14px; background: #101010; box-shadow: 0 30px 90px rgba(0, 0, 0, .65); }
+.ssh-modal-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; }
+.ssh-modal-heading h2 { margin: 0; color: #f3f3f1; font-size: 22px; }
+.ssh-help { margin: 14px 0 20px; color: #a0a09a; font-size: 13px; line-height: 1.55; }
+.ssh-modal label { display: flex; flex-direction: column; gap: 7px; margin-top: 14px; color: #a0a09a; font-size: 12px; }
+.ssh-modal input, .ssh-modal textarea { width: 100%; border: 1px solid #353531; border-radius: 9px; outline: 0; padding: 11px 12px; color: #f3f3f1; background: #080808; }
+.ssh-modal input:focus, .ssh-modal textarea:focus { border-color: #f5a623; }
+.ssh-modal textarea { min-height: 190px; resize: vertical; font: 11px/1.5 "SFMono-Regular", Consolas, monospace; }
+.ssh-error { margin-top: 14px; padding: 11px 12px; border: 1px solid #6c3030; border-radius: 9px; color: #fecaca; background: #231111; font-size: 12px; line-height: 1.5; overflow-wrap: anywhere; }
+.save-ssh-button { width: 100%; margin-top: 18px; padding: 12px; border-color: #6f4a12; color: #f5a623; }
+.ssh-settings-button { padding: 10px 12px; font-size: 12px; }
+
 @media (max-width: 900px) {
   .app-shell { min-height: 100dvh; padding: 24px; }
   .topbar { align-items: stretch; flex-direction: column; }
@@ -175,9 +189,22 @@ button:disabled { cursor: not-allowed; opacity: .4; }
   .process-actions { grid-template-columns: 1fr 1fr; margin-top: 0; }
 }
 
+@media (max-width: 700px) {
+  /* Responsive fix: cover narrow desktop windows and larger phones that previously sat between tablet and phone layouts. */
+  .app-shell { padding: 18px; }
+  .topbar { gap: 18px; margin-bottom: 20px; }
+  .server-switcher { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .server-tab { width: 100%; min-width: 0; }
+  .refresh-group { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 10px; }
+  .summary { width: 100%; }
+  .summary div { flex: 1; min-width: 0; }
+  .service-card { padding: 16px; }
+}
+
 @media (max-width: 600px) {
-  .app-shell { padding: 18px 14px; }
-  .server-switcher { flex-direction: column; }
+  /* Android layout fix: keep controls clear of display cutouts and gesture-navigation insets. */
+  .app-shell { padding: calc(18px + env(safe-area-inset-top)) calc(14px + env(safe-area-inset-right)) calc(18px + env(safe-area-inset-bottom)) calc(14px + env(safe-area-inset-left)); }
+  .server-switcher { grid-template-columns: 1fr; }
   .server-tab { width: 100%; }
   .summary { width: 100%; }
   .summary div { flex: 1; min-width: 0; padding-inline: 12px; }
@@ -191,4 +218,20 @@ button:disabled { cursor: not-allowed; opacity: .4; }
   .log-search { order: 2; flex-basis: 100%; }
   .process-panel { max-height: 48vh; padding: 16px; }
   .process-actions { grid-template-columns: 1fr; }
+  .refresh-group { grid-template-columns: 1fr 1fr; }
+  .refresh-group > span { grid-column: 1 / -1; }
+  .refresh-button, .ssh-settings-button { width: 100%; justify-content: center; }
+  .ssh-modal { min-height: 100dvh; padding: calc(20px + env(safe-area-inset-top)) calc(16px + env(safe-area-inset-right)) calc(20px + env(safe-area-inset-bottom)) calc(16px + env(safe-area-inset-left)); border: 0; border-radius: 0; }
+}
+
+@media (max-width: 420px) {
+  /* Phone layout fix: prevent long timestamps and summary labels from squeezing controls on compact Android screens. */
+  .summary div { gap: 5px; padding: 11px 8px; }
+  .summary strong { font-size: 19px; }
+  .summary span { font-size: 11px; }
+  .service-card { padding: 15px; }
+  .card-heading h2 { font-size: 15px; }
+  .metadata { grid-template-columns: 1fr 1fr; }
+  .metadata div:last-child { grid-column: 1 / -1; }
+  .actions { flex-wrap: wrap; }
 }

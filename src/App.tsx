@@ -24,10 +24,11 @@ type ServerInfo = {
   id: string;
   name: string;
   host: string;
-  serviceCount: number;
+  serviceCount: number | null;
 };
 
 type Notice = { kind: "success" | "error"; message: string } | null;
+type SshCredentials = { username: string; privateKey: string };
 
 const STATUS_REFRESH_SECONDS = 60;
 const LIVE_LOG_REFRESH_MS = 1_500;
@@ -75,6 +76,11 @@ function App() {
   const [searchQuery, setSearchQuery] = useState("");
   const [currentMatch, setCurrentMatch] = useState(0);
   const [notice, setNotice] = useState<Notice>(null);
+  const [sshConfigured, setSshConfigured] = useState<boolean | null>(null);
+  const [showSshSettings, setShowSshSettings] = useState(false);
+  const [sshForm, setSshForm] = useState<SshCredentials>({ username: "root", privateKey: "" });
+  const [savingSsh, setSavingSsh] = useState(false);
+  const [sshError, setSshError] = useState<string | null>(null);
   const hasLoaded = useRef(false);
   const nextRefreshAt = useRef(Date.now() + STATUS_REFRESH_SECONDS * 1_000);
   const liveLogsExpireAt = useRef(Date.now() + LIVE_LOG_TIMEOUT_SECONDS * 1_000);
@@ -88,13 +94,17 @@ function App() {
   const activeServer = servers.find((server) => server.id === activeServerId) ?? null;
 
   const refreshServices = useCallback(async () => {
-    if (!activeServerId) return;
+    if (!activeServerId || sshConfigured !== true) return;
     hasLoaded.current ? setRefreshing(true) : setLoading(true);
     nextRefreshAt.current = Date.now() + STATUS_REFRESH_SECONDS * 1_000;
     setSecondsToRefresh(STATUS_REFRESH_SECONDS);
     try {
       const result = await invoke<ServiceStatus[]>("get_services", { serverId: activeServerId });
       setServices(result);
+      // Auto-discovery feature: update the server badge from the latest /opt scan instead of a compiled-in count.
+      setServers((current) => current.map((server) => (
+        server.id === activeServerId ? { ...server, serviceCount: result.length } : server
+      )));
       setNotice(null);
       hasLoaded.current = true;
     } catch (error) {
@@ -104,7 +114,7 @@ function App() {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [activeServerId]);
+  }, [activeServerId, sshConfigured]);
 
   const refreshLogs = useCallback(async (service: ServiceStatus, quiet = false) => {
     if (!activeServerId) return;
@@ -139,6 +149,27 @@ function App() {
 
   useEffect(() => {
     if (!activeServerId) return;
+    // Mobile feature: check the per-device credential store before attempting SSH on a newly selected server.
+    setSshConfigured(null);
+    void invoke<boolean>("has_ssh_credentials", { serverId: activeServerId })
+      .then((configured) => {
+        setSshConfigured(configured);
+        if (!configured) {
+          // UX fix: an automatically opened SSH setup modal owns its feedback and should not expose a stale dashboard notice behind it.
+          setNotice(null);
+          setSshError(null);
+          setLoading(false);
+          setShowSshSettings(true);
+        }
+      })
+      .catch((error) => {
+        setLoading(false);
+        setNotice({ kind: "error", message: String(error) });
+      });
+  }, [activeServerId]);
+
+  useEffect(() => {
+    if (!activeServerId || sshConfigured !== true) return;
     void refreshServices();
     // Feature: one visible countdown drives the requested one-minute automatic refresh cycle.
     const timer = window.setInterval(() => {
@@ -148,7 +179,7 @@ function App() {
       if (remaining === 0) void refreshServices();
     }, 1_000);
     return () => window.clearInterval(timer);
-  }, [activeServerId, refreshServices]);
+  }, [activeServerId, refreshServices, sshConfigured]);
 
   useEffect(() => {
     if (!selected) return;
@@ -321,6 +352,27 @@ function App() {
     setActiveServerId(serverId);
   }
 
+  async function saveSshSettings() {
+    if (!activeServerId) return;
+    // UX fix: each validation attempt replaces the previous inline SSH error instead of leaving stale feedback visible.
+    setSshError(null);
+    setSavingSsh(true);
+    try {
+      // Mobile feature: Rust validates the pasted key with a real connection before persisting it locally.
+      await invoke("save_ssh_credentials", { serverId: activeServerId, credentials: sshForm });
+      setSshConfigured(true);
+      setShowSshSettings(false);
+      setSshError(null);
+      setSshForm((current) => ({ ...current, privateKey: "" }));
+      setNotice({ kind: "success", message: "SSH connection verified and saved on this device." });
+    } catch (error) {
+      // UX fix: SSH validation belongs inside the active modal, not in the obscured dashboard notice behind it.
+      setSshError(String(error));
+    } finally {
+      setSavingSsh(false);
+    }
+  }
+
   const activeCount = services.filter((service) => service.activeState === "active").length;
   const failedCount = services.filter((service) => service.activeState === "failed").length;
   const countdown = `0:${secondsToRefresh.toString().padStart(2, "0")}`;
@@ -358,13 +410,14 @@ function App() {
                   <strong>{server.name}</strong>
                   <small>{server.host}</small>
                 </span>
-                <span className="server-service-count">{server.serviceCount}</span>
+                <span className="server-service-count">{server.serviceCount ?? "—"}</span>
               </button>
             ))}
           </nav>
         </div>
         <div className="refresh-group">
           <span>Auto refresh in {countdown}</span>
+          <button className="ssh-settings-button" onClick={() => { setNotice(null); setSshError(null); setShowSshSettings(true); }}>SSH settings</button>
           <button className="refresh-button" onClick={() => void refreshServices()} disabled={refreshing}>
             <span className={refreshing ? "spin" : ""}>↻</span>
             {refreshing ? "Refreshing" : "Refresh now"}
@@ -391,8 +444,8 @@ function App() {
         // UX fix: empty servers stay informational because services are managed only through Rust code.
         <section className="empty-server">
           <p className="eyebrow">{activeServer?.host}</p>
-          <h2>No services configured</h2>
-          <p>This server is available in Cabin and ready for its first whitelisted systemd process.</p>
+          <h2>No services discovered</h2>
+          <p>Cabin found no eligible service folders in /opt. Add a deployed project folder and refresh.</p>
           <code>root@{activeServer?.host}</code>
         </section>
       ) : (
@@ -551,6 +604,26 @@ function App() {
                 <p className="process-note">Actions refresh both the process state and live journal output.</p>
               </aside>
             </div>
+          </section>
+        </div>
+      )}
+
+      {showSshSettings && activeServer && (
+        <div className="modal-backdrop ssh-backdrop" role="presentation">
+          <section className="ssh-modal" role="dialog" aria-modal="true" aria-labelledby="ssh-settings-title">
+            <div className="ssh-modal-heading">
+              <div>
+                <p className="eyebrow">{activeServer.host}</p>
+                <h2 id="ssh-settings-title">SSH settings</h2>
+              </div>
+              {sshConfigured && <button className="icon-button" onClick={() => { setSshError(null); setShowSshSettings(false); }} aria-label="Close">×</button>}
+            </div>
+            <p className="ssh-help">Paste the private key that can access this server. It stays in Cabin's local app storage on this device.</p>
+            <label>Username<input value={sshForm.username} onChange={(event) => setSshForm({ ...sshForm, username: event.target.value })} autoCapitalize="none" /></label>
+            {/* Simplification feature: Cabin uses the standard SSH port 22 internally, so users only provide identity and key. */}
+            <label>Private key<textarea value={sshForm.privateKey} onChange={(event) => { setSshError(null); setSshForm({ ...sshForm, privateKey: event.target.value }); }} placeholder="-----BEGIN OPENSSH PRIVATE KEY-----" autoCapitalize="none" autoCorrect="off" spellCheck={false} /></label>
+            {sshError && <div className="ssh-error" role="alert">{sshError}</div>}
+            <button className="save-ssh-button" disabled={savingSsh || !sshForm.privateKey.trim()} onClick={() => void saveSshSettings()}>{savingSsh ? "Testing connection…" : "Test and save"}</button>
           </section>
         </div>
       )}
